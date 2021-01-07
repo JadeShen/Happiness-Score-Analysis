@@ -1,0 +1,75 @@
+---
+title: "PROJECT2"
+output: html_document
+---
+```{r}
+rm(list = ls())
+```
+
+```{r}
+
+data("BostonHousing",package="mlbench")
+str(BostonHousing)
+dim(BostonHousing)
+```
+
+```{r}
+mfit_null = lm(medv~1, data = BostonHousing)
+mfit_full = lm(medv ~ ., data = BostonHousing)
+mfit_full_edit = lm(medv~crim+zn+chas+nox+rm+dis+rad+tax+ptratio+b +lstat, data = BostonHousing)
+summary(mfit_full)
+summary(mfit_full_edit)
+```
+
+```{r}
+#step(mfit_null,data=BostonHousing, scope = list(lower=mfit_null,upper = mfit_full),direction = "forward")
+```
+##BOX-COX
+```{r}
+y          = BostonHousing$medv
+
+n_dt       = length(BostonHousing$medv)
+y_dot      = exp(sum(log(y)/n_dt))
+lambda_vec = c(-2, -1, -0.5, 0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1, 2)
+SSE_lambda = rep(NA, length(lambda_vec))
+
+for (i in 1:length(lambda_vec))
+{
+  lambda = lambda_vec[i]
+  
+  if (lambda != 0)
+  {
+    y_lambda = ((y^lambda) - 1)/(lambda*(y_dot^(lambda-1)))
+  } else {
+    y_lambda = y_dot*log(y)
+  }
+  
+  temp_model    = lm(y_lambda~.,data=BostonHousing)
+  temp_anova    = anova(temp_model)
+  SSE_lambda[i] = temp_anova$`Sum Sq`[2]
+}
+
+plot(lambda_vec, SSE_lambda, type='b', pch=16, xlab='Lambda', ylab='SSE(Lambda)', main='Box-Cox:Happiness Data')
+plot(lambda_vec, SSE_lambda, ylim=c(1500,2000), type='b', pch=16, xlab='Lambda', ylab='SSE(Lambda)', main='Box-Cox: Happiness  Data')
+```
+
+```{r}
+#Std_Res = rstandard(mfit_full)
+Std_Res = rstandard(mfit_full_edit)
+probplot(Std_Res, qnorm, xlab='Standardized Residuals', ylab='Percent')
+```
+
+```{r}
+yhat = mfit_full$fitted.values
+plot(yhat, Std_Res, ylab='Standardized Residuals', xlab='Fitted Values', main='Standardized Residuals', pch=16)
+abline(h=0)
+```
+
+```{r}
+hist(Std_Res, xlab='Standardized Residuals', main='Standardized Residuals', cex.main = 2)
+```
+
+```{r}
+
+```
+

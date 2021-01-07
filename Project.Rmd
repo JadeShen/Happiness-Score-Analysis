@@ -1,0 +1,467 @@
+---
+title: "Project1"
+output: html_document
+---
+```{r}
+rm(list = ls())
+```
+## Library 
+```{r read_data, echo = FALSE, include=FALSE}
+library(CombMSC)
+library(leaps)
+library(MASS)
+library(stats4)
+library(CombMSC)
+library(leaps)
+library(car)
+```
+
+```{r}
+data = read.csv("2016.csv", header = TRUE)
+names(data)
+dim(data)
+```
+
+
+## Load Data, select & rename
+```{r load Data}
+
+data$Country = NULL
+data$Happiness.Rank = NULL
+data$Region = NULL
+data$Lower.Confidence.Interval = NULL
+data$Upper.Confidence.Interval = NULL
+data$Generosity =NULL
+#names(data)<- c("Happiness_Sco","Economy","Social_sup","Health","Freedom","Trust_GOV","Dystopia")
+head(data)
+names(data)<- c("y","x1","x2","x3","x4","x5","x6")
+#data$y <- NULL
+```
+
+```{r check name}
+names(data)
+```
+```{r}
+
+#cor(data)
+```
+```{r}
+
+mfit_null = lm(data$y~1, data = data)
+mmfit_full = lm(data$y ~ ., data = data) 
+summary(mmfit_full)
+x13 = data$x1*data$x3
+x12 = data$x1*data$x2
+x23 = data$x2*data$x3
+x45 = data$x4*data$x5
+
+
+mfit_full = lm(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x13+x12+x45)
+summary(mfit_full)
+```
+
+```{r}
+#plot(mfit_full)
+```
+
+```{r fig.width=10,fig.height=6}
+par(mfrow=c(2,2))
+plot(data$x1,data$y,main="x1&x2", xlab='x', ylab='y', pch=16, cex=1,col=2)
+abline(lm(data$y~data$x1),col=2)
+points(data$x2,data$y)
+abline(lm(data$y~data$x2))
+
+plot(data$x1,data$y, xlab='x',main="x1&x3", ylab='y', pch=16, cex=1,col=2)
+abline(lm(data$y~data$x1),col=2)
+points(data$x3,data$y)
+abline(lm(data$y~data$x3))
+
+
+
+
+plot(data$x4,data$y,main="x4&x5", xlab='x', ylab='y', pch=16, cex=1,col=2)
+
+points(data$x5,data$y)
+
+
+```
+
+
+```{r}
+coplot(data$y~data$x2|data$x1,col="red",rows=1,panel = panel.car,number = 2)
+```
+
+
+```{r}
+coplot(data$y~data$x5|data$x4,col="red",rows=1,panel = panel.car,number = 2)
+```
+```{r}
+coplot(data$y~data$x1|data$x3,col="red",rows=1,panel = panel.car,number = 2)
+```
+
+## Evaluating all possible 
+```{r fig.width=8,fig.height=10}
+par(mfrow=c(5,2))
+plot(data$x1, data$y, xlab='x1', ylab='y', pch=16, cex=1) 
+
+plot(data$x2, data$y, xlab='x2', ylab='y', pch=16, cex=1)
+
+plot(data$x3, data$y, xlab='x3', ylab='y', pch=16, cex=1)
+
+plot(data$x4, data$y, xlab='x4', ylab='y', pch=16, cex=1)
+
+plot(data$x5, data$y, xlab='x5', ylab='y', pch=16, cex=1)
+
+
+plot(data$x6, data$y, xlab='x6', ylab='y', pch=16, cex=1)
+
+plot(x12,data$y,xlab='x12', ylab='y', pch=16, cex=1)
+plot(x13,data$y,xlab='x13', ylab='y', pch=16, cex=1)
+#plot(x23,data$y,xlab='x23', ylab='y', pch=16, cex=1)
+plot(x45,data$y,xlab='x45', ylab='y', pch=16, cex=1)
+
+```
+
+
+
+
+```{r}
+mfit_full2 =  regsubsets(data$y~x1+x2+x3+x4+x5+x6+x12+x13+x45,data=data) 
+reg.summary = summary(mfit_full2)
+names(reg.summary)
+```
+```{r}
+plot(reg.summary$adjr2)
+```
+
+
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.summary$rss,xlab = "# of variables",ylab="RSS",type="l")
+plot(reg.summary$adjr2,xlab="# of variables",ylab="Adjusted RSq",type="l")
+which.max(reg.summary$adjr2)
+points(7,reg.summary$adjr2[7],col="red",cex=2,pch=20)
+```
+```{r}
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+```
+
+
+```{r}
+plot(reg.summary$cp,xlab="# of variable",ylab ="CP",type = "l")
+points(7,reg.summary$cp[7],col="red",cex=2,pch=20)
+
+plot(reg.summary$bic,xlab="# of variable",ylab ="BIC",type = "l")
+points(6,reg.summary$bic[6],col="red",cex=2,pch=20)
+```
+
+```{r}
+plot(mfit_full2,scale="r2")
+plot(mfit_full2,scale="adjr2")
+plot(mfit_full2,scale="Cp")
+plot(mfit_full2,scale="bic")
+```
+
+```{r}
+vif(mfit_full)
+```
+
+
+## The Box-Cox method
+
+```{r}
+
+
+y          = data$y
+
+n_dt       = length(data$y)
+y_dot      = exp(sum(log(y)/n_dt))
+lambda_vec = c(-2, -1, -0.5, 0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1, 2)
+SSE_lambda = rep(NA, length(lambda_vec))
+
+for (i in 1:length(lambda_vec))
+{
+  lambda = lambda_vec[i]
+  
+  if (lambda != 0)
+  {
+    y_lambda = ((y^lambda) - 1)/(lambda*(y_dot^(lambda-1)))
+  } else {
+    y_lambda = y_dot*log(y)
+  }
+  
+  temp_model    = lm(y_lambda~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x12+x13+x45,data=data)
+  temp_anova    = anova(temp_model)
+  SSE_lambda[i] = temp_anova$`Sum Sq`[2]
+}
+
+plot(lambda_vec, SSE_lambda, type='b', pch=16, xlab='Lambda', ylab='SSE(Lambda)', main='Box-Cox:Happiness Data')
+plot(lambda_vec, SSE_lambda, ylim=c(16,18), type='b', pch=16, xlab='Lambda', ylab='SSE(Lambda)', main='Box-Cox: Happiness  Data')
+
+```
+
+
+
+
+```{r}
+
+library(e1071)
+
+Std_Res = rstandard(mfit_full)
+probplot(Std_Res, qnorm, xlab='Standardized Residuals', ylab='Percent')
+
+
+#rStu_Res = rstudent(mfit_full)
+#e1071::probplot(rStu_Res, qnorm, xlab='Student Residuals', ylab='Percent')
+```
+
+
+```{r}
+yhat = mfit_full$fitted.values
+plot(yhat, Std_Res, ylab='Standardized Residuals', xlab='Fitted Values', main='Standardized Residuals', pch=16)
+abline(h=0)
+
+```
+
+
+```{r}
+hist(Std_Res, xlab='Standardized Residuals', main='Standardized Residuals', cex.main = 2)
+
+```
+## Check influence points: 
+```{r}
+xtest = data$y-yhat
+which(abs(xtest)>3)
+boxplot(xtest)
+```
+
+```{r}
+infM   = influence.measures(mfit_full)
+infMat = data.frame(infM$infmat)
+
+```
+
+
+```{r}
+p = 10
+n = 157
+DFFITS       = infMat$dffit
+D = infMat$cook.d
+
+```
+
+
+```{r}
+infM_DLdata = data.frame(cbind(D=D,DFFITS=DFFITS))
+```
+
+```{r}
+table(infM_DLdata$DFFITS>2*sqrt((p+1)/n))
+which(infM_DLdata$DFFITS>2*sqrt((p+1)/n))
+```
+
+
+
+
+```{r}
+table(infM_DLdata$D>1)
+which(infM_DLdata$D>1)
+```
+
+
+
+
+### Forward selection: 
+```{r}
+#step(mfit_null,data=data, scope = list(lower=mfit_null,upper = mfit_full),direction = "forward")
+
+step(mfit_null,data=data, scope = list(lower=mfit_null,upper = mfit_full),direction = "forward")
+```
+
+### Backward selection: 
+```{r}
+step(mfit_full,data=data,direction = "backward")
+```
+### Stepwise Selection:
+```{r}
+step(mfit_null,data=data, scope = list(upper = mfit_full),direction = "both")
+```
+```{r}
+test_model = lm(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x13)
+vif(test_model)
+```
+
+
+```{r}
+test_model3 =lm(data$y~.,data = data)
+plot(test_model3)
+vif(test_model3)
+```
+
+
+
+```{r read_data, echo = FALSE, include=FALSE}
+library(glmnet)
+library(ggplot2)
+library(cowplot)
+library(randomForest)
+
+```
+
+
+
+```{r}
+
+x = model.matrix(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x12+x13+x45)[,-1]
+y = data$y
+#set.seed(1)
+#train = sample(1:nrow(x),nrow(x)/3)
+#test = (-train)
+#y.test = y[test]
+```
+
+
+
+
+## LASSO 
+```{r fig.width=10,fig.height=6}
+lambdas <- 10^{seq(from=-2, to =5, length=100)}
+lafit<- glmnet(x,y,alpha = 1,lambda = lambdas)
+plot(lafit,xvar="lambda",xlim=c(-5,1),label = TRUE)
+#abline(v=-1)
+
+
+```
+```{r}
+cv.lafit <- cv.glmnet(x,y,alpha=1,lambda=lambdas)
+plot(cv.lafit)
+la.best.lam <- cv.lafit$lambda.1se
+la.best.lam
+```
+```{r}
+la.best <- glmnet(x,y,alpha = 1,lambda = la.best.lam)
+coef(la.best)
+```
+```{r}
+test_model2 = lm(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x12+x13+x45)
+vif(test_model2)
+```
+
+## Ridge
+```{r}
+rrfit <- glmnet(x,y,alpha =0, lambda = lambdas)
+plot(rrfit,xvar="lambda",label = TRUE)
+```
+
+
+
+```{r}
+cv.rrfit <- cv.glmnet(x,y,alpha=0,lambda=lambdas)
+plot(cv.lafit)
+rr.best.lam <- cv.rrfit$lambda.1se
+rr.best.lam
+```
+
+```{r}
+rr.best <- glmnet(x,y,alpha=0,lambda=rr.best.lam)
+coef(rr.best)
+```
+
+
+
+
+
+## Principla Analysis Componment
+
+```{r}
+library(pls)
+set.seed(2)
+pcr.fit = pcr(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x12+x13+x45, data = data,scale=TRUE,validation="CV")
+summary(pcr.fit)
+```
+
+```{r}
+validationplot(pcr.fit,val.type = "MSEP")
+```
+```{r}
+
+pcr.fit2 = pcr(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x12+x13+x23, data = data,subset=train,scale=TRUE,validation="CV")
+summary(pcr.fit2)
+validationplot(pcr.fit2,val.type = "MSEP")
+
+pcr.pred = predict(pcr.fit,x[test,],ncomp=4)
+mean((pcr.pred-y.test)^2)
+
+```
+```{r}
+pcr.fit3 = pcr(y~x,scale = TRUE, ncomp=4)
+summary(pcr.fit3)
+```
+
+## 452 chap6
+```{r}
+X<- model.matrix(data$y~data$x1+data$x2+data$x3+data$x4+data$x5+data$x6+x12+x13+x45)
+X <- X[,-1]
+X <-scale(X)  # no scale only first 2 large 
+pcs <- prcomp(X)
+
+plot(pcs)
+```
+```{r}
+summary(pcs)
+```
+
+```{r}
+round(pcs$rotation[,1:3],2)
+
+```
+```{r}
+z1= -0.40*data$x1-0.35*data$x2-0.38*data$x3-0.28*data$x4-0.25*data$x5-0.06*data$x6-0.42*x12-0.41*x23-0.30*x45
+z2= -0.24*data$x1-0.17*data$x2-0.25*data$x3+0.35*data$x4+0.58*data$x5-0.08*data$x6-0.18*x12-0.19*x23+0.56*x45
+z3= -0.11*data$x1+0.06*data$x2-0.07*data$x3+0.14*data$x4-0.04*data$x5+0.98*data$x6-0.01*x12-0.08*x23
+
+```
+
+
+
+
+
+## check vif
+```{r}
+
+newmodel = lm(data$y~z1+z2+z3)
+plot(newmodel)
+vif(newmodel)
+```
+
+```{r}
+
+z <- princomp(X)
+z
+summary(z)
+```
+
+```{r}
+loadings(z)
+```
+####111212
+```{r}
+m1 = regsubsets(y~x1+x2+x3+x4+x5+x6+x12+x13+x45,data = data)
+sum1 = summary(m1)
+
+plot(m1,scale="adjr2",ylim=c(0.73555,0.99000))
+```
+
+```{r}
+m2 = lm(y~x1+x2+x3+x4+x5+x6+x13+x45+x12,data = data)
+b =summary(m2)
+b$adj.r.squared
+```
+```{r}
+m3 = lm(y~x1+x2+x3+x4+x5+x6+x12,data = data)
+a = summary(m3)
+a$adj.r.squared
+```
+
